@@ -227,6 +227,7 @@ function bindSvgEvents(){
 }
 
 function onPrefClick(el){
+  el.blur?.();
   const name = el.getAttribute("data-name");
   if(!name) return;
 
