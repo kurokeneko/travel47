@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>47都道府県制覇マップ</title>
+<title>47都道府県制覇マップ（精密SVG）</title>
 <meta name="theme-color" content="#43a047" />
 <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:%2247%E9%83%BD%E9%81%93%E5%BA%9C%E7%9C%8C%E5%88%B6%E8%A6%87%E3%83%9E%E3%83%83%E3%83%97%22,%22short_name%22:%22%E5%88%B6%E8%A6%87%E3%83%9E%E3%83%83%E3%83%97%22,%22display%22:%22standalone%22,%22start_url%22:%22.%22,%22background_color%22:%22#ffffff%22,%22theme_color%22:%22#43a047%22}" />
 <style>
@@ -28,45 +28,21 @@
   .mapShell{background:#fff;border:1px solid #eee;border-radius:12px;padding:8px}
   #mapHost{min-height:320px}
   svg{width:100%;height:auto;max-width:1000px;display:block;margin:0 auto}
-  /* ボタン化した県（iOS Safari対策版：filterを使わない） */
-.pref{
-  cursor:pointer;
-  fill:var(--unvisited);
-  stroke:var(--stroke);
-  stroke-width:0.6;
-  transition:fill .12s ease;
-  -webkit-tap-highlight-color: transparent; /* タップ時の青ハイライトを無効化 */
-}
-.pref:hover{ /* 再描画バグ回避のためfilterは使わない */ }
-.pref.visited{ fill:var(--visited) }
-/* くじ当選/選択中は“枠線を少し太く＆金色”で表現（filter不使用） */
-.pref.selected{ stroke-width:1.2; stroke:#e0b100; }
-/* フォーカス枠を出さない */
-.pref:focus{ outline:none }
-svg:focus{ outline:none }
+  /* ボタン化した県 */
+  .pref{cursor:pointer;fill:var(--unvisited);stroke:var(--stroke);stroke-width:0.6;transition:filter .15s ease}
+  .pref:hover{filter:brightness(1.02)}
   .pref.visited{fill:var(--visited)}
+  .pref.selected{filter:drop-shadow(0 0 .6rem rgba(255,200,0,.6))}
   .legend{display:flex;gap:8px;align-items:center;margin-top:8px;color:#333;flex-wrap:wrap}
   .swatch{width:14px;height:14px;border-radius:4px;border:1px solid #ddd}
   .list{margin-top:12px;font-size:14px}
   .badge{display:inline-block;background:#fff3cd;color:#8a6d3b;border:1px solid #ffe8a1;border-radius:999px;padding:2px 8px;font-size:12px}
   footer{color:var(--muted);font-size:12px;text-align:center;margin:24px 0}
   .warn{background:#fff8e1;border:1px solid #ffe8a1;color:#6b5b19;padding:8px 10px;border-radius:8px;margin:8px 0}
-  
-  .pref:focus {
-  outline: none;
-}
-.pref {
-  pointer-events: all;
-  focusable: false;
-}
-svg:focus {
-  outline: none;
-}
-  
 </style>
 </head>
 <body>
-<header><span class="dot"></span><h1>47都道府県制覇マップ</h1></header>
+<header><span class="dot"></span><h1>47都道府県制覇マップ（精密SVG）</h1></header>
 
 <div class="wrap">
   <div class="panel">
@@ -230,38 +206,15 @@ function adaptSvgAsButtons(svgEl){
 /* ========= 県クリックのハンドラ等 ========= */
 function bindSvgEvents(){
   const paths = document.querySelectorAll(".pref");
-
-  // SVG自体のフォーカスを禁止（iOSでの“左上へ飛ぶ”挙動を抑止）
-  const svg = document.getElementById("japanMap");
-  if (svg){
-    svg.setAttribute("focusable","false");
-    svg.setAttribute("tabindex","-1");
-  }
-
   paths.forEach(p=>{
     const name = p.getAttribute("data-name");
     if(!name) return;
-
-    // 個々の県もフォーカス不可に
-    p.setAttribute("tabindex","-1");
-
-    // iOS Safariがスクロール/ズームしようとする既定動作を止める
-    const stop = e => { e.preventDefault(); e.stopPropagation(); };
-    p.addEventListener("touchstart", stop, {passive:false});
-    p.addEventListener("pointerdown", stop);
-    p.addEventListener("mousedown", stop);
-
     if(state.visited[name]) p.classList.add("visited");
-
-    p.addEventListener("click", ()=>{
-      p.blur?.();           // 念のためフォーカス解除
-      onPrefClick(p);       // 本来のクリック処理
-    });
+    p.addEventListener("click", ()=>onPrefClick(p));
   });
 }
 
 function onPrefClick(el){
-  el.blur?.();
   const name = el.getAttribute("data-name");
   if(!name) return;
 
