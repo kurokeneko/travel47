@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>47都道府県制覇マップ（v0.1）</title>
+<meta name="theme-color" content="#43a047" />
+<link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:%2247%E9%83%BD%E9%81%93%E5%BA%9C%E7%9C%8C%E5%88%B6%E8%A6%87%E3%83%9E%E3%83%83%E3%83%97%22,%22short_name%22:%22%E5%88%B6%E8%A6%87%E3%83%9E%E3%83%83%E3%83%97%22,%22display%22:%22standalone%22,%22start_url%22:%22.%22,%22background_color%22:%22#ffffff%22,%22theme_color%22:%22#43a047%22,%22icons%22:[]}" />
+<style>
+  :root {
+    --green:#43a047;
+    --green-ink:#2e7d32;
+    --bg:#f7faf7;
+    --chip:#e8f5e9;
+    --ink:#222;
+    --muted:#687076;
+    --visited:#81c784;
+    --highlight:#ffecb3;
+    --unvisited:#e0e0e0;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif}
+  header{
+    position:sticky;top:0;z-index:5;
+    background:#fff;border-bottom:1px solid #eee;
+    padding:12px 16px;display:flex;align-items:center;gap:12px
+  }
+  .dot{width:10px;height:10px;border-radius:50%;background:var(--green)}
+  h1{font-size:18px;margin:0;color:var(--green-ink)}
+  .wrap{max-width:960px;margin:0 auto;padding:16px}
+  .panel{background:#fff;border:1px solid #eee;border-radius:12px;padding:12px 12px}
+  .stats{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 4px}
+  .chip{background:var(--chip);border:1px solid #dbe7dc;color:var(--green-ink);padding:6px 10px;border-radius:999px;font-weight:600}
+  .row{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}
+  button{
+    appearance:none;border:0;border-radius:10px;padding:10px 14px;
+    background:var(--green);color:#fff;font-weight:700;letter-spacing:.02em
+  }
+  button.ghost{background:#fff;color:var(--green-ink);border:1px solid #c8e6c9}
+  button:disabled{opacity:.55}
+  .hint{color:var(--muted);font-size:13px}
+  .mapShell{background:#fff;border:1px solid #eee;border-radius:12px;padding:8px}
+  .grid{
+    display:grid;
+    grid-template-columns:repeat(10,minmax(0,1fr));
+    gap:4px;
+  }
+  .pref{
+    position:relative;aspect-ratio:1/1;border-radius:8px;
+    background:var(--unvisited);display:flex;align-items:center;justify-content:center;
+    font-size:11px;text-align:center;padding:4px;cursor:pointer;border:1px solid #ddd;
+    user-select:none;-webkit-tap-highlight-color:transparent;
+  }
+  .pref.visited{background:var(--visited);border-color:#7cbf80}
+  .pref.selected{outline:3px solid var(--highlight)}
+  .pref small{display:block;color:#333;font-weight:700;font-size:10px}
+  .legend{display:flex;gap:8px;align-items:center;margin-top:8px;color:#333}
+  .swatch{width:14px;height:14px;border-radius:4px;border:1px solid #ddd}
+  .list{margin-top:12px;font-size:14px}
+  .badge{display:inline-block;background:#fff3cd;color:#8a6d3b;border:1px solid #ffe8a1;border-radius:999px;padding:2px 8px;font-size:12px}
+  footer{color:var(--muted);font-size:12px;text-align:center;margin:24px 0}
+</style>
+</head>
+<body>
+  <header>
+    <span class="dot"></span>
+    <h1>47都道府県制覇マップ</h1>
+  </header>
+
+  <div class="wrap">
+    <div class="panel">
+      <div class="stats" id="stats">
+        <span class="chip">訪問済み <b id="visitedCount">0</b> / 47</span>
+        <span class="chip">ポイント <b id="points">0</b> pt</span>
+        <span class="chip">フリーチケット <b id="tickets">0</b> 枚</span>
+      </div>
+      <div class="row">
+        <button id="drawLots">🎯 くじを引く（未訪問から）</button>
+        <button id="useTicket" class="ghost" disabled>🎟 フリーチケットを使う</button>
+        <button id="reset" class="ghost">初期化</button>
+      </div>
+      <p class="hint">地図（各県ブロック）をタップで「訪問済み」に切替。10県訪問ごとに自動で🎟が1枚貯まります。<br>
+      🎟使用中は一度訪れた県も「特別訪問」可能（訪問数は増えませんが記録に残せます）。</p>
+    </div>
+
+    <!-- v0.1: 簡易ブロック日本地図（概ね地方ごとに配置） -->
+    <div class="mapShell" aria-label="日本地図（簡易ブロック）">
+      <div class="grid" id="mapGrid"></div>
+      <div class="legend">
+        <span class="swatch" style="background:var(--unvisited)"></span> 未訪問
+        <span class="swatch" style="background:var(--visited)"></span> 訪問済み
+        <span class="swatch" style="outline:3px solid var(--highlight);background:#fff"></span> くじの当選/特別選択中
+      </div>
+      <div class="list" id="logArea"></div>
+    </div>
+
+    <footer>v0.1（次の段階で精密SVGに差し替え / Firebase同期予定）</footer>
+  </div>
+
+<script>
+/*
+  v0.1 方針
+  - 47都道府県を配列化 → 簡易ブロックSVG（=実体はCSS Gridのsquare）として描画
+  - クリックで visited toggle、visited数=points、自動で freeTicket = floor(points/10) - used
+  - 🎯くじ = 未訪問からランダム1件 → ハイライト
+  - 🎟フリーチケット = 有効中は既訪問も“特別訪問”として記録（visited増やさない）
+  - localStorageで保存/復元
+  - v0.2以降で本物の地形SVGに置換（ID対応は維持）
+*/
+
+const PREFS = [
+  // 北海道・東北
+  "北海道","青森","岩手","宮城","秋田","山形","福島",
+  // 関東
+  "茨城","栃木","群馬","埼玉","千葉","東京","神奈川",
+  // 中部（甲信越・北陸・東海）
+  "新潟","富山","石川","福井","山梨","長野","岐阜","静岡","愛知",
+  // 近畿
+  "三重","滋賀","京都","大阪","兵庫","奈良","和歌山",
+  // 中国
+  "鳥取","島根","岡山","広島","山口",
+  // 四国
+  "徳島","香川","愛媛","高知",
+  // 九州・沖縄
+  "福岡","佐賀","長崎","熊本","大分","宮崎","鹿児島","沖縄"
+];
+
+const state = {
+  visited: {},      // {県名: true/false}
+  specialTrips: [], // 🎟使用での“特別訪問”ログ {name, ts}
+  usedTickets: 0,   // 使用済みチケット枚数
+  selected: null,   // くじ/選択ハイライト
+  ticketMode: false // 🎟使用モード中
+};
+
+const els = {
+  grid: document.getElementById("mapGrid"),
+  visitedCount: document.getElementById("visitedCount"),
+  points: document.getElementById("points"),
+  tickets: document.getElementById("tickets"),
+  drawLots: document.getElementById("drawLots"),
+  useTicket: document.getElementById("useTicket"),
+  reset: document.getElementById("reset"),
+  logArea: document.getElementById("logArea"),
+};
+
+init();
+
+function init(){
+  // 復元
+  const saved = JSON.parse(localStorage.getItem("jp47-game")||"{}");
+  if(saved.visited) state.visited = saved.visited;
+  if(saved.specialTrips) state.specialTrips = saved.specialTrips;
+  if(saved.usedTickets!=null) state.usedTickets = saved.usedTickets;
+
+  // グリッド生成（10x?）— 位置は“ざっくり地方順”に並べ
+  PREFS.forEach((name, i)=>{
+    const div = document.createElement("div");
+    div.className = "pref";
+    div.dataset.name = name;
+    div.innerHTML = `<small>${name}</small>`;
+    if(state.visited[name]) div.classList.add("visited");
+    div.addEventListener("click", ()=> onPrefClick(div));
+    els.grid.appendChild(div);
+  });
+
+  updateStats();
+  els.drawLots.addEventListener("click", onDrawLots);
+  els.useTicket.addEventListener("click", onToggleTicketMode);
+  els.reset.addEventListener("click", hardReset);
+
+  // PWA: 簡易SW登録（オフライン起動の足がかり）
+  if('serviceWorker' in navigator){
+    const sw = `
+      self.addEventListener('install',e=>self.skipWaiting());
+      self.addEventListener('activate',e=>self.clients.claim());
+      self.addEventListener('fetch',e=>{});
+    `;
+    const blob = new Blob([sw],{type:'text/javascript'});
+    const url = URL.createObjectURL(blob);
+    navigator.serviceWorker.register(url);
+  }
+}
+
+function onPrefClick(el){
+  const name = el.dataset.name;
+
+  if(state.ticketMode){
+    // 🎟使用モード：既訪問/未訪問問わず「特別訪問」記録 → モード解除 & 使用枚数+1
+    if(getTickets()<=0){
+      alert("フリーチケットがありません");
+      state.ticketMode = false;
+      renderTicketButton();
+      return;
+    }
+    state.specialTrips.push({name, ts: Date.now()});
+    state.usedTickets += 1;
+    state.ticketMode = false;
+    renderTicketButton();
+    flash(el);
+    save(); renderLog(); updateStats();
+    return;
+  }
+
+  // 通常モード：一度行ったら原則行けない → toggle ではなく “訪問済みに固定”
+  if(!state.visited[name]){
+    state.visited[name] = true;
+    el.classList.add("visited");
+    flash(el);
+    save(); renderLog(); updateStats();
+  } else {
+    // 既訪問は触っても状態は変えない（ルール：基本は一度行ったら行けない）
+    wiggle(el);
+  }
+}
+
+function onDrawLots(){
+  const unvisited = PREFS.filter(n=>!state.visited[n]);
+  if(unvisited.length===0){
+    alert("未訪問の県はありません！おめでとう！");
+    return;
+  }
+  const pick = unvisited[Math.floor(Math.random()*unvisited.length)];
+  state.selected = pick;
+
+  // ハイライト更新
+  document.querySelectorAll(".pref").forEach(p=>{
+    p.classList.toggle("selected", p.dataset.name===pick);
+  });
+
+  // 小さな演出
+  const el = [...document.querySelectorAll(".pref")].find(p=>p.dataset.name===pick);
+  if(el) flash(el);
+}
+
+function onToggleTicketMode(){
+  if(getTickets()<=0 && !state.ticketMode){
+    alert("フリーチケットがありません。県を10ヶ所訪問すると1枚貯まります。");
+    return;
+  }
+  state.ticketMode = !state.ticketMode;
+  renderTicketButton();
+  // 視覚的に「好きな県を選んでください」感を出す
+  if(state.ticketMode){
+    document.querySelectorAll(".pref").forEach(p=>p.classList.add("selected"));
+  } else {
+    document.querySelectorAll(".pref").forEach(p=>p.classList.remove("selected"));
+    if(state.selected){
+      const el = [...document.querySelectorAll(".pref")].find(p=>p.dataset.name===state.selected);
+      if(el) el.classList.add("selected");
+    }
+  }
+}
+
+function getVisitedCount(){
+  return Object.values(state.visited).filter(Boolean).length;
+}
+
+function getTickets(){
+  // 10県ごとに1枚 → 発行枚数 = floor(points/10)
+  const issued = Math.floor(getVisitedCount()/10);
+  return issued - state.usedTickets;
+}
+
+function updateStats(){
+  const visited = getVisitedCount();
+  els.visitedCount.textContent = visited;
+  els.points.textContent = visited; // 1県=1pt
+  els.tickets.textContent = getTickets();
+  renderTicketButton();
+  renderLog();
+}
+
+function renderTicketButton(){
+  els.useTicket.disabled = getTickets()<=0 && !state.ticketMode;
+  els.useTicket.textContent = state.ticketMode ? "✅ 使うのをやめる" : "🎟 フリーチケットを使う";
+}
+
+function renderLog(){
+  const t = getTickets();
+  const used = state.usedTickets;
+  const issued = Math.floor(getVisitedCount()/10);
+  const logs = [];
+  logs.push(`📝 ログ：フリーチケット発行 <span class="badge">${issued}枚</span> ／ 使用 <span class="badge">${used}枚</span> ／ 残 <span class="badge">${t}枚</span>`);
+  if(state.specialTrips.length){
+    const items = state.specialTrips.slice().reverse().slice(0,10).map(s=>{
+      const d = new Date(s.ts);
+      const ds = `${d.getFullYear()}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+      return `・${ds} 特別訪問：${s.name}`;
+    }).join("<br>");
+    logs.push(items);
+  } else {
+    logs.push(`・まだ特別訪問はありません（10県達成で🎟1枚）`);
+  }
+  els.logArea.innerHTML = logs.join("<br>");
+}
+
+function save(){
+  localStorage.setItem("jp47-game", JSON.stringify({
+    visited: state.visited,
+    specialTrips: state.specialTrips,
+    usedTickets: state.usedTickets
+  }));
+}
+
+function hardReset(){
+  if(!confirm("すべての記録を初期化します。よろしいですか？")) return;
+  state.visited = {};
+  state.specialTrips = [];
+  state.usedTickets = 0;
+  state.selected = null;
+  state.ticketMode = false;
+  document.querySelectorAll(".pref").forEach(p=>{
+    p.classList.remove("visited","selected");
+  });
+  save(); updateStats();
+}
+
+function flash(el){
+  el.animate([{transform:"scale(1)"},{transform:"scale(1.06)"},{transform:"scale(1)"}],
+             {duration:280,easing:"ease-out"});
+}
+function wiggle(el){
+  el.animate([{transform:"translateX(0)"},{transform:"translateX(-3px)"},{transform:"translateX(3px)"},{transform:"translateX(0)"}],
+             {duration:280,easing:"ease-out"});
+}
+
+// ------ 簡易“地図”の並び（地方っぽい雰囲気で10列に配置）------
+// 説明：ここは視覚の配置だけ。次のバージョンで“本物のSVG地形”に置換します。
+(function layout(){
+  const cells = Array.from(document.querySelectorAll(".pref"));
+  // ざっくり地方レイヤ：行を多少ずらして“日本列島ぽさ”を演出
+  // 配置は手触り優先（正確な地理ではありません）
+  const order = [
+    "北海道",
+    "青森","岩手","宮城","秋田","山形","福島",
+    "新潟","富山","石川","福井","山梨","長野","茨城","栃木","群馬",
+    "埼玉","千葉","東京","神奈川",
+    "岐阜","静岡","愛知","三重","滋賀","京都","大阪","兵庫","奈良","和歌山",
+    "鳥取","島根","岡山","広島","山口",
+    "徳島","香川","愛媛","高知",
+    "福岡","佐賀","長崎","熊本","大分","宮崎","鹿児島","沖縄"
+  ];
+  // 並べ替え
+  const map = new Map(order.map((n,i)=>[n,i]));
+  cells.sort((a,b)=>map.get(a.dataset.name)-map.get(b.dataset.name))
+       .forEach(c=>els.grid.appendChild(c));
+})();
+</script>
+</body>
+</html>
