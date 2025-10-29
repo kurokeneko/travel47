@@ -3,20 +3,21 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>47都道府県制覇マップ（v0.2）</title>
+<title>47都道府県制覇マップ（SVG版 ひな型）</title>
 <meta name="theme-color" content="#43a047" />
 <link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:%2247%E9%83%BD%E9%81%93%E5%BA%9C%E7%9C%8C%E5%88%B6%E8%A6%87%E3%83%9E%E3%83%83%E3%83%97%22,%22short_name%22:%22%E5%88%B6%E8%A6%87%E3%83%9E%E3%83%83%E3%83%97%22,%22display%22:%22standalone%22,%22start_url%22:%22.%22,%22background_color%22:%22#ffffff%22,%22theme_color%22:%22#43a047%22,%22icons%22:[]}" />
 <style>
   :root{
     --green:#43a047; --green-ink:#2e7d32; --bg:#f7faf7; --chip:#e8f5e9;
     --ink:#222; --muted:#687076; --visited:#81c784; --highlight:#ffecb3; --unvisited:#e0e0e0;
+    --stroke:#c7c7c7;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif}
   header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #eee;padding:12px 16px;display:flex;align-items:center;gap:12px}
   .dot{width:10px;height:10px;border-radius:50%;background:var(--green)}
   h1{font-size:18px;margin:0;color:var(--green-ink)}
-  .wrap{max-width:960px;margin:0 auto;padding:16px}
+  .wrap{max-width:1000px;margin:0 auto;padding:16px}
   .panel{background:#fff;border:1px solid #eee;border-radius:12px;padding:12px}
   .stats{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 4px}
   .chip{background:var(--chip);border:1px solid #dbe7dc;color:var(--green-ink);padding:6px 10px;border-radius:999px;font-weight:600}
@@ -26,27 +27,11 @@
   button:disabled{opacity:.55}
   .hint{color:var(--muted);font-size:13px}
   .mapShell{background:#fff;border:1px solid #eee;border-radius:12px;padding:8px}
-  /* ==== v0.2: 日本列島型ピクセルマップ ==== */
-  .grid{
-    display:grid;
-    grid-template-columns:repeat(24,minmax(0,1fr));   /* 横24マスのピクセル地図 */
-    grid-auto-rows:clamp(16px,3.2vw,28px);           /* 正方形のマス（レスポンシブ） */
-    gap:4px;
-    justify-items:stretch;
-    align-items:stretch;
-    max-width:780px;
-    margin-inline:auto;
-  }
-  .pref{
-    position:relative;aspect-ratio:1/1;border-radius:6px;
-    background:var(--unvisited);display:flex;align-items:center;justify-content:center;
-    font-size:10px;text-align:center;padding:3px;cursor:pointer;border:1px solid #ddd;
-    user-select:none;-webkit-tap-highlight-color:transparent;
-    grid-row:var(--r);grid-column:var(--c);
-  }
-  .pref.visited{background:var(--visited);border-color:#7cbf80}
-  .pref.selected{outline:3px solid var(--highlight)}
-  .pref small{display:block;color:#333;font-weight:700;font-size:10px}
+  svg{width:100%;height:auto;max-width:900px;display:block;margin:0 auto}
+  .pref{cursor:pointer;fill:var(--unvisited);stroke:var(--stroke);stroke-width:0.8}
+  .pref.visited{fill:var(--visited)}
+  .pref.selected{filter:drop-shadow(0 0 0.6rem rgba(255,200,0,.6))}
+  .label{font-size:9px;fill:#333;pointer-events:none}
   .legend{display:flex;gap:8px;align-items:center;margin-top:8px;color:#333;flex-wrap:wrap}
   .swatch{width:14px;height:14px;border-radius:4px;border:1px solid #ddd}
   .list{margin-top:12px;font-size:14px}
@@ -55,7 +40,7 @@
 </style>
 </head>
 <body>
-<header><span class="dot"></span><h1>47都道府県制覇マップ</h1></header>
+<header><span class="dot"></span><h1>47都道府県制覇マップ（精密SVGひな型）</h1></header>
 
 <div class="wrap">
   <div class="panel">
@@ -69,11 +54,32 @@
       <button id="useTicket" class="ghost" disabled>🎟 フリーチケットを使う</button>
       <button id="reset" class="ghost">初期化</button>
     </div>
-    <p class="hint">県マスをタップで訪問済みに。10県ごとに🎟1枚。🎟使用中は既訪問も「特別訪問」記録可能。</p>
+    <p class="hint">SVG内の県（形そのもの）をタップで訪問済みに。10県ごとに🎟1枚。🎟使用中は既訪問も「特別訪問」記録可能。</p>
   </div>
 
-  <div class="mapShell" aria-label="日本地図（ピクセル配置）">
-    <div class="grid" id="mapGrid"></div>
+  <div class="mapShell" aria-label="日本地図（精密SVG）">
+    <!-- ▼▼▼ ここが“置き換えポイント” ▼▼▼
+         今はサンプル（北海道・青森・岩手のみ）です。
+         後述手順に従い、ここ全体を「47都道府県の精密SVG」に丸ごと置換してください。 -->
+    <svg id="japanMap" viewBox="120 0 860 900" xmlns="http://www.w3.org/2000/svg" aria-label="Japan Map (sample)">
+      <!-- 北海道（サンプルの単純化パス） -->
+      <path id="pref-hokkaido" class="pref" data-name="北海道"
+            d="M570,60 l60,20 40,40 -30,30 -40,15 -30,-10 -35,-30 -15,-35 20,-20 z" />
+      <!-- 青森 -->
+      <path id="pref-aomori" class="pref" data-name="青森"
+            d="M520,200 l40,10 10,30 -25,20 -35,-10 -10,-25 20,-25 z" />
+      <!-- 岩手 -->
+      <path id="pref-iwate" class="pref" data-name="岩手"
+            d="M520,270 l50,10 5,60 -35,40 -35,-10 -5,-40 20,-60 z" />
+      <!-- ※以降の県は置換時に全て入ります -->
+
+      <!-- 仮ラベル（置換時は自動で削除OK） -->
+      <text x="585" y="70" class="label">北海道</text>
+      <text x="535" y="220" class="label">青森</text>
+      <text x="540" y="310" class="label">岩手</text>
+    </svg>
+    <!-- ▲▲▲ 置き換えポイント（SVG全部） ▲▲▲ -->
+
     <div class="legend">
       <span class="swatch" style="background:var(--unvisited)"></span> 未訪問
       <span class="swatch" style="background:var(--visited)"></span> 訪問済み
@@ -82,11 +88,11 @@
     <div class="list" id="logArea"></div>
   </div>
 
-  <footer>v0.2（日本列島型ピクセル配置）／ 次は実地形SVGに差し替え可</footer>
+  <footer>SVGは後で47県版に置換できます／UI・ポイント・くじはこのまま使えます</footer>
 </div>
 
 <script>
-/* 共有ロジックはv0.1と同じ。配置だけ地理寄りに刷新（24×Nのピクセル座標） */
+/* ===== アプリの共通ロジック（SVG差し替え後もそのまま使えます） ===== */
 const PREFS = [
   "北海道","青森","岩手","宮城","秋田","山形","福島",
   "茨城","栃木","群馬","埼玉","千葉","東京","神奈川",
@@ -97,37 +103,9 @@ const PREFS = [
   "福岡","佐賀","長崎","熊本","大分","宮崎","鹿児島","沖縄"
 ];
 
-const POS = {
-  // ざっくり日本列島の形になるようなピクセル座標（row, col）
-  // 上ほど北・右ほど東のイメージ
-  "北海道":[2,18],
-  "青森":[6,17], "岩手":[7,18], "宮城":[8,18],
-  "秋田":[7,16], "山形":[8,17], "福島":[9,18],
-
-  "新潟":[8,16], "富山":[9,15], "石川":[8,14], "福井":[10,14],
-  "山梨":[11,17], "長野":[10,16], "岐阜":[11,15], "静岡":[12,17], "愛知":[12,16],
-
-  "茨城":[10,19], "栃木":[9,19], "群馬":[9,17],
-  "埼玉":[10,18], "千葉":[11,19], "東京":[11,18], "神奈川":[12,18],
-
-  "三重":[12,15], "滋賀":[11,14], "京都":[11,13], "大阪":[12,13], "兵庫":[11,12],
-  "奈良":[12,14], "和歌山":[13,13],
-
-  "鳥取":[11,11], "島根":[11,10], "岡山":[12,11], "広島":[12,10], "山口":[12,9],
-
-  "香川":[13,12], "徳島":[13,13], "愛媛":[14,12], "高知":[14,13],
-
-  "福岡":[13,8], "佐賀":[14,8], "長崎":[14,7],
-  "熊本":[15,9], "大分":[14,9], "宮崎":[15,10], "鹿児島":[16,9],
-  "沖縄":[18,6]
-};
-
-const state = {
-  visited:{}, specialTrips:[], usedTickets:0, selected:null, ticketMode:false
-};
+const state = { visited:{}, specialTrips:[], usedTickets:0, selected:null, ticketMode:false };
 
 const els = {
-  grid:document.getElementById("mapGrid"),
   visitedCount:document.getElementById("visitedCount"),
   points:document.getElementById("points"),
   tickets:document.getElementById("tickets"),
@@ -135,31 +113,22 @@ const els = {
   useTicket:document.getElementById("useTicket"),
   reset:document.getElementById("reset"),
   logArea:document.getElementById("logArea"),
+  svg:document.getElementById("japanMap")
 };
 
 init();
 
 function init(){
+  // 保存復元
   const saved = JSON.parse(localStorage.getItem("jp47-game")||"{}");
   if(saved.visited) state.visited = saved.visited;
   if(saved.specialTrips) state.specialTrips = saved.specialTrips;
   if(saved.usedTickets!=null) state.usedTickets = saved.usedTickets;
 
-  // ピクセル地図に各県を配置
-  PREFS.forEach(name=>{
-    const [r,c] = POS[name];
-    const div = document.createElement("div");
-    div.className = "pref";
-    div.dataset.name = name;
-    div.style.setProperty("--r", r);
-    div.style.setProperty("--c", c);
-    div.innerHTML = `<small>${name}</small>`;
-    if(state.visited[name]) div.classList.add("visited");
-    div.addEventListener("click", ()=>onPrefClick(div));
-    els.grid.appendChild(div);
-  });
+  // SVG内の全ての県パスにイベントを付与（data-name属性で県名を一致させる）
+  bindSvgEvents();
 
-  updateStats();
+  // UIイベント
   els.drawLots.addEventListener("click", onDrawLots);
   els.useTicket.addEventListener("click", onToggleTicketMode);
   els.reset.addEventListener("click", hardReset);
@@ -170,10 +139,24 @@ function init(){
     const url = URL.createObjectURL(new Blob([sw],{type:'text/javascript'}));
     navigator.serviceWorker.register(url);
   }
+
+  updateStats();
+}
+
+function bindSvgEvents(){
+  if(!els.svg) return;
+  const paths = els.svg.querySelectorAll('.pref');
+  paths.forEach(p=>{
+    const name = p.dataset.name;
+    if(state.visited[name]) p.classList.add('visited');
+    p.addEventListener('click', ()=>onPrefClick(p));
+  });
 }
 
 function onPrefClick(el){
   const name = el.dataset.name;
+  if(!name) return;
+
   if(state.ticketMode){
     if(getTickets()<=0){ alert("フリーチケットがありません"); state.ticketMode=false; renderTicketButton(); return; }
     state.specialTrips.push({name, ts:Date.now()});
@@ -183,7 +166,9 @@ function onPrefClick(el){
   if(!state.visited[name]){
     state.visited[name] = true; el.classList.add("visited"); flash(el);
     save(); renderLog(); updateStats();
-  }else{ wiggle(el); }
+  } else {
+    wiggle(el);
+  }
 }
 
 function onDrawLots(){
@@ -250,3 +235,8 @@ function wiggle(el){ el.animate([{transform:"translateX(0)"},{transform:"transla
 </script>
 </body>
 </html>
+
+
+
+
+
