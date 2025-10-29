@@ -3,21 +3,20 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>47都道府県制覇マップ（SVG版 ひな型）</title>
+<title>47都道府県制覇マップ（精密SVG）</title>
 <meta name="theme-color" content="#43a047" />
-<link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:%2247%E9%83%BD%E9%81%93%E5%BA%9C%E7%9C%8C%E5%88%B6%E8%A6%87%E3%83%9E%E3%83%83%E3%83%97%22,%22short_name%22:%22%E5%88%B6%E8%A6%87%E3%83%9E%E3%83%83%E3%83%97%22,%22display%22:%22standalone%22,%22start_url%22:%22.%22,%22background_color%22:%22#ffffff%22,%22theme_color%22:%22#43a047%22,%22icons%22:[]}" />
+<link rel="manifest" href="data:application/manifest+json,{&quot;name&quot;:%2247%E9%83%BD%E9%81%93%E5%BA%9C%E7%9C%8C%E5%88%B6%E8%A6%87%E3%83%9E%E3%83%83%E3%83%97%22,%22short_name%22:%22%E5%88%B6%E8%A6%87%E3%83%9E%E3%83%83%E3%83%97%22,%22display%22:%22standalone%22,%22start_url%22:%22.%22,%22background_color%22:%22#ffffff%22,%22theme_color%22:%22#43a047%22}" />
 <style>
   :root{
     --green:#43a047; --green-ink:#2e7d32; --bg:#f7faf7; --chip:#e8f5e9;
-    --ink:#222; --muted:#687076; --visited:#81c784; --highlight:#ffecb3; --unvisited:#e0e0e0;
-    --stroke:#c7c7c7;
+    --ink:#222; --muted:#687076; --visited:#81c784; --highlight:#ffecb3; --unvisited:#e9ecef; --stroke:#c7c7c7;
   }
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans JP",sans-serif}
   header{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid #eee;padding:12px 16px;display:flex;align-items:center;gap:12px}
   .dot{width:10px;height:10px;border-radius:50%;background:var(--green)}
   h1{font-size:18px;margin:0;color:var(--green-ink)}
-  .wrap{max-width:1000px;margin:0 auto;padding:16px}
+  .wrap{max-width:1060px;margin:0 auto;padding:16px}
   .panel{background:#fff;border:1px solid #eee;border-radius:12px;padding:12px}
   .stats{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 4px}
   .chip{background:var(--chip);border:1px solid #dbe7dc;color:var(--green-ink);padding:6px 10px;border-radius:999px;font-weight:600}
@@ -27,20 +26,23 @@
   button:disabled{opacity:.55}
   .hint{color:var(--muted);font-size:13px}
   .mapShell{background:#fff;border:1px solid #eee;border-radius:12px;padding:8px}
-  svg{width:100%;height:auto;max-width:900px;display:block;margin:0 auto}
-  .pref{cursor:pointer;fill:var(--unvisited);stroke:var(--stroke);stroke-width:0.8}
+  #mapHost{min-height:320px}
+  svg{width:100%;height:auto;max-width:1000px;display:block;margin:0 auto}
+  /* ボタン化した県 */
+  .pref{cursor:pointer;fill:var(--unvisited);stroke:var(--stroke);stroke-width:0.6;transition:filter .15s ease}
+  .pref:hover{filter:brightness(1.02)}
   .pref.visited{fill:var(--visited)}
-  .pref.selected{filter:drop-shadow(0 0 0.6rem rgba(255,200,0,.6))}
-  .label{font-size:9px;fill:#333;pointer-events:none}
+  .pref.selected{filter:drop-shadow(0 0 .6rem rgba(255,200,0,.6))}
   .legend{display:flex;gap:8px;align-items:center;margin-top:8px;color:#333;flex-wrap:wrap}
   .swatch{width:14px;height:14px;border-radius:4px;border:1px solid #ddd}
   .list{margin-top:12px;font-size:14px}
   .badge{display:inline-block;background:#fff3cd;color:#8a6d3b;border:1px solid #ffe8a1;border-radius:999px;padding:2px 8px;font-size:12px}
   footer{color:var(--muted);font-size:12px;text-align:center;margin:24px 0}
+  .warn{background:#fff8e1;border:1px solid #ffe8a1;color:#6b5b19;padding:8px 10px;border-radius:8px;margin:8px 0}
 </style>
 </head>
 <body>
-<header><span class="dot"></span><h1>47都道府県制覇マップ（精密SVGひな型）</h1></header>
+<header><span class="dot"></span><h1>47都道府県制覇マップ（精密SVG）</h1></header>
 
 <div class="wrap">
   <div class="panel">
@@ -54,31 +56,13 @@
       <button id="useTicket" class="ghost" disabled>🎟 フリーチケットを使う</button>
       <button id="reset" class="ghost">初期化</button>
     </div>
-    <p class="hint">SVG内の県（形そのもの）をタップで訪問済みに。10県ごとに🎟1枚。🎟使用中は既訪問も「特別訪問」記録可能。</p>
+    <p class="hint">県をタップで訪問済みに。10県ごとに🎟1枚。🎟中は既訪問も「特別訪問」記録。</p>
+    <div id="msg" class="warn" style="display:none;"></div>
   </div>
 
   <div class="mapShell" aria-label="日本地図（精密SVG）">
-    <!-- ▼▼▼ ここが“置き換えポイント” ▼▼▼
-         今はサンプル（北海道・青森・岩手のみ）です。
-         後述手順に従い、ここ全体を「47都道府県の精密SVG」に丸ごと置換してください。 -->
-    <svg id="japanMap" viewBox="120 0 860 900" xmlns="http://www.w3.org/2000/svg" aria-label="Japan Map (sample)">
-      <!-- 北海道（サンプルの単純化パス） -->
-      <path id="pref-hokkaido" class="pref" data-name="北海道"
-            d="M570,60 l60,20 40,40 -30,30 -40,15 -30,-10 -35,-30 -15,-35 20,-20 z" />
-      <!-- 青森 -->
-      <path id="pref-aomori" class="pref" data-name="青森"
-            d="M520,200 l40,10 10,30 -25,20 -35,-10 -10,-25 20,-25 z" />
-      <!-- 岩手 -->
-      <path id="pref-iwate" class="pref" data-name="岩手"
-            d="M520,270 l50,10 5,60 -35,40 -35,-10 -5,-40 20,-60 z" />
-      <!-- ※以降の県は置換時に全て入ります -->
-
-      <!-- 仮ラベル（置換時は自動で削除OK） -->
-      <text x="585" y="70" class="label">北海道</text>
-      <text x="535" y="220" class="label">青森</text>
-      <text x="540" y="310" class="label">岩手</text>
-    </svg>
-    <!-- ▲▲▲ 置き換えポイント（SVG全部） ▲▲▲ -->
+    <!-- ここに外部SVGを読み込んで挿入 -->
+    <div id="mapHost" aria-busy="true" aria-label="日本地図を読み込み中…"></div>
 
     <div class="legend">
       <span class="swatch" style="background:var(--unvisited)"></span> 未訪問
@@ -88,24 +72,34 @@
     <div class="list" id="logArea"></div>
   </div>
 
-  <footer>SVGは後で47県版に置換できます／UI・ポイント・くじはこのまま使えます</footer>
+  <footer>地図は Geolonia の精密SVGを利用（各県に data-code を付与） [oai_citation:1‡GitHub](https://github.com/geolonia/japanese-prefectures)</footer>
 </div>
 
 <script>
-/* ===== アプリの共通ロジック（SVG差し替え後もそのまま使えます） ===== */
-const PREFS = [
-  "北海道","青森","岩手","宮城","秋田","山形","福島",
+/* ========= 基本データ ========= */
+const PREFS = ["北海道","青森","岩手","宮城","秋田","山形","福島",
   "茨城","栃木","群馬","埼玉","千葉","東京","神奈川",
   "新潟","富山","石川","福井","山梨","長野","岐阜","静岡","愛知",
   "三重","滋賀","京都","大阪","兵庫","奈良","和歌山",
   "鳥取","島根","岡山","広島","山口",
   "徳島","香川","愛媛","高知",
-  "福岡","佐賀","長崎","熊本","大分","宮崎","鹿児島","沖縄"
-];
+  "福岡","佐賀","長崎","熊本","大分","宮崎","鹿児島","沖縄"];
 
+const CODE_TO_NAME = {
+ "01":"北海道","02":"青森","03":"岩手","04":"宮城","05":"秋田","06":"山形","07":"福島",
+ "08":"茨城","09":"栃木","10":"群馬","11":"埼玉","12":"千葉","13":"東京","14":"神奈川",
+ "15":"新潟","16":"富山","17":"石川","18":"福井","19":"山梨","20":"長野","21":"岐阜","22":"静岡","23":"愛知",
+ "24":"三重","25":"滋賀","26":"京都","27":"大阪","28":"兵庫","29":"奈良","30":"和歌山",
+ "31":"鳥取","32":"島根","33":"岡山","34":"広島","35":"山口",
+ "36":"徳島","37":"香川","38":"愛媛","39":"高知",
+ "40":"福岡","41":"佐賀","42":"長崎","43":"熊本","44":"大分","45":"宮崎","46":"鹿児島","47":"沖縄"
+};
+
+/* ========= 状態 ========= */
 const state = { visited:{}, specialTrips:[], usedTickets:0, selected:null, ticketMode:false };
-
 const els = {
+  host:document.getElementById("mapHost"),
+  msg:document.getElementById("msg"),
   visitedCount:document.getElementById("visitedCount"),
   points:document.getElementById("points"),
   tickets:document.getElementById("tickets"),
@@ -113,20 +107,20 @@ const els = {
   useTicket:document.getElementById("useTicket"),
   reset:document.getElementById("reset"),
   logArea:document.getElementById("logArea"),
-  svg:document.getElementById("japanMap")
 };
 
 init();
 
-function init(){
+/* ========= 初期化 ========= */
+async function init(){
   // 保存復元
   const saved = JSON.parse(localStorage.getItem("jp47-game")||"{}");
   if(saved.visited) state.visited = saved.visited;
   if(saved.specialTrips) state.specialTrips = saved.specialTrips;
   if(saved.usedTickets!=null) state.usedTickets = saved.usedTickets;
 
-  // SVG内の全ての県パスにイベントを付与（data-name属性で県名を一致させる）
-  bindSvgEvents();
+  // 地図読み込み（外部→ローカルの順に試行）
+  await loadSvgMap();
 
   // UIイベント
   els.drawLots.addEventListener("click", onDrawLots);
@@ -143,18 +137,85 @@ function init(){
   updateStats();
 }
 
+/* ========= 精密白地図の読み込み＆ボタン化 ========= */
+async function loadSvgMap(){
+  // 1) まずは Geolonia の公開SVG（map-full.svg）を取得
+  //    失敗したら 2) /assets/map-full.svg にフォールバック（後述）
+  const urls = [
+    "https://geolonia.github.io/japanese-prefectures/map-full.svg",
+    "./assets/map-full.svg" // ← 失敗時はこの相対パスを使う（必要なら用意する）
+  ];
+
+  let svgText = null, lastErr = null;
+  for(const url of urls){
+    try{
+      const res = await fetch(url, {mode:"cors"});
+      if(!res.ok) throw new Error(String(res.status));
+      svgText = await res.text();
+      break;
+    }catch(e){ lastErr = e; }
+  }
+  if(!svgText){
+    showMsg("白地図（SVG）の読み込みに失敗しました。通信環境を確認するか、`/assets/map-full.svg` を配置してください。");
+    els.host.removeAttribute("aria-busy");
+    return;
+  }
+
+  // 差し込み
+  els.host.innerHTML = svgText;
+  els.host.removeAttribute("aria-busy");
+
+  // ルートSVGに id を付与（なければ）
+  const svg = els.host.querySelector("svg");
+  if(svg && !svg.id) svg.id = "japanMap";
+
+  // Geoloniaの仕様：各県は .prefecture クラス、data-code="01" 等が付いている（READMEの仕様） [oai_citation:2‡GitHub](https://github.com/geolonia/japanese-prefectures)
+  // それをこのアプリ用に .pref & data-name="県名" に“アダプト”する
+  adaptSvgAsButtons(svg);
+
+  // 既訪問の復元 & クリックを付与
+  bindSvgEvents();
+}
+
+/* どんな白地図でも “pref ボタン” に変換 */
+function adaptSvgAsButtons(svgEl){
+  if(!svgEl) return;
+
+  // 1) Geolonia: data-code を県名へ変換
+  svgEl.querySelectorAll("[data-code]").forEach(el=>{
+    const code = String(el.getAttribute("data-code")).padStart(2,"0");
+    const name = CODE_TO_NAME[code];
+    if(!name) return;
+    el.classList.add("pref");
+    el.setAttribute("data-name", name);
+  });
+
+  // 2) 念のため path/g に県名が含まれていれば補完（Wikimedia等の別SVGでも動く）
+  svgEl.querySelectorAll("path, g").forEach(el=>{
+    if(el.classList.contains("pref")) return;
+    const id = el.getAttribute("id") || "";
+    const title = el.querySelector("title")?.textContent || "";
+    const guess = PREFS.find(n => id.includes(n) || title.includes(n));
+    if(guess){
+      el.classList.add("pref");
+      el.setAttribute("data-name", guess);
+    }
+  });
+}
+
+/* ========= 県クリックのハンドラ等 ========= */
 function bindSvgEvents(){
-  if(!els.svg) return;
-  const paths = els.svg.querySelectorAll('.pref');
+  const paths = document.querySelectorAll(".pref");
   paths.forEach(p=>{
-    const name = p.dataset.name;
-    if(state.visited[name]) p.classList.add('visited');
-    p.addEventListener('click', ()=>onPrefClick(p));
+    const name = p.getAttribute("data-name");
+    if(!name) return;
+    if(state.visited[name]) p.classList.add("visited");
+    p.addEventListener("click", ()=>onPrefClick(p));
   });
 }
 
 function onPrefClick(el){
-  const name = el.dataset.name;
+  const name = el.getAttribute("data-name");
   if(!name) return;
 
   if(state.ticketMode){
@@ -166,9 +227,7 @@ function onPrefClick(el){
   if(!state.visited[name]){
     state.visited[name] = true; el.classList.add("visited"); flash(el);
     save(); renderLog(); updateStats();
-  } else {
-    wiggle(el);
-  }
+  } else { wiggle(el); }
 }
 
 function onDrawLots(){
@@ -177,9 +236,9 @@ function onDrawLots(){
   const pick = unvisited[Math.floor(Math.random()*unvisited.length)];
   state.selected = pick;
   document.querySelectorAll(".pref").forEach(p=>{
-    p.classList.toggle("selected", p.dataset.name===pick);
+    p.classList.toggle("selected", p.getAttribute("data-name")===pick);
   });
-  const el = [...document.querySelectorAll(".pref")].find(p=>p.dataset.name===pick);
+  const el = [...document.querySelectorAll(".pref")].find(p=>p.getAttribute("data-name")===pick);
   if(el) flash(el);
 }
 
@@ -187,23 +246,25 @@ function onToggleTicketMode(){
   if(getTickets()<=0 && !state.ticketMode){ alert("フリーチケットがありません。10県達成で1枚付与。"); return; }
   state.ticketMode = !state.ticketMode; renderTicketButton();
   document.querySelectorAll(".pref").forEach(p=>{
-    p.classList.toggle("selected", state.ticketMode || p.dataset.name===state.selected);
+    p.classList.toggle("selected", state.ticketMode || p.getAttribute("data-name")===state.selected);
   });
 }
 
+/* ========= ステータス & 保存 ========= */
 function getVisitedCount(){ return Object.values(state.visited).filter(Boolean).length; }
 function getTickets(){ const issued = Math.floor(getVisitedCount()/10); return issued - state.usedTickets; }
 
 function updateStats(){
   const visited = getVisitedCount();
-  els.visitedCount.textContent = visited;
-  els.points.textContent = visited;
-  els.tickets.textContent = getTickets();
+  document.getElementById("visitedCount").textContent = visited;
+  document.getElementById("points").textContent = visited;
+  document.getElementById("tickets").textContent = getTickets();
   renderTicketButton(); renderLog();
 }
 function renderTicketButton(){
-  els.useTicket.disabled = getTickets()<=0 && !state.ticketMode;
-  els.useTicket.textContent = state.ticketMode ? "✅ 使うのをやめる" : "🎟 フリーチケットを使う";
+  const btn = document.getElementById("useTicket");
+  btn.disabled = getTickets()<=0 && !state.ticketMode;
+  btn.textContent = state.ticketMode ? "✅ 使うのをやめる" : "🎟 フリーチケットを使う";
 }
 function renderLog(){
   const t = getTickets(), used = state.usedTickets, issued = Math.floor(getVisitedCount()/10);
@@ -224,6 +285,8 @@ function save(){
     visited:state.visited, specialTrips:state.specialTrips, usedTickets:state.usedTickets
   }));
 }
+
+/* ========= ユーティリティ ========= */
 function hardReset(){
   if(!confirm("すべての記録を初期化します。よろしいですか？")) return;
   state.visited = {}; state.specialTrips = []; state.usedTickets = 0; state.selected = null; state.ticketMode = false;
@@ -232,11 +295,7 @@ function hardReset(){
 }
 function flash(el){ el.animate([{transform:"scale(1)"},{transform:"scale(1.06)"},{transform:"scale(1)"}],{duration:280,easing:"ease-out"}); }
 function wiggle(el){ el.animate([{transform:"translateX(0)"},{transform:"translateX(-3px)"},{transform:"translateX(3px)"},{transform:"translateX(0)"}],{duration:280,easing:"ease-out"}); }
+function showMsg(t){ els.msg.textContent=t; els.msg.style.display="block"; }
 </script>
 </body>
 </html>
-
-
-
-
-
